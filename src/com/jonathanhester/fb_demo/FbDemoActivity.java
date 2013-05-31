@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -27,6 +28,7 @@ import com.facebook.HttpMethod;
 import com.facebook.Request;
 import com.facebook.Response;
 import com.facebook.Session;
+import com.facebook.Session.NewPermissionsRequest;
 import com.facebook.SessionDefaultAudience;
 import com.facebook.SessionState;
 import com.facebook.UiLifecycleHelper;
@@ -35,7 +37,6 @@ import com.facebook.widget.ProfilePictureView;
 import com.facebook.widget.WebDialog;
 
 public class FbDemoActivity extends FragmentActivity {
-
 	private Button showFriendsButton;
 	private Button showPhotosButton;
 	private Button postStatusUpdateButton;
@@ -45,8 +46,8 @@ public class FbDemoActivity extends FragmentActivity {
 	private ViewGroup controlsContainer;
 	private GraphUser user;
 	private PendingAction pendingAction = PendingAction.NONE;
-	private Session session;
 	private WebDialog dialog;
+	private ProgressDialog spinner;
 
 	private static final List<String> PERMISSIONS = Arrays
 			.asList("publish_actions");
@@ -58,7 +59,7 @@ public class FbDemoActivity extends FragmentActivity {
 			.asList("publish_actions");
 
 	private enum PendingAction {
-		NONE, VIEW_PHOTO, OPEN_GRAPH_POST
+		NONE, VIEW_PHOTOS, OPEN_GRAPH_POST
 	}
 
 	private UiLifecycleHelper uiHelper;
@@ -74,39 +75,16 @@ public class FbDemoActivity extends FragmentActivity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+        spinner = new ProgressDialog(this);
+        spinner.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        spinner.setMessage(getString(R.string.com_facebook_loading));
+
 
 		uiHelper = new UiLifecycleHelper(this, callback);
 		uiHelper.onCreate(savedInstanceState);
 
 		setContentView(R.layout.activity_fb_demo);
-
-		// start Facebook Login
-		Session.openActiveSession(this, true, new Session.StatusCallback() {
-
-			// callback when session changes state
-			@Override
-			public void call(Session session, SessionState state,
-					Exception exception) {
-				if (session.isOpened()) {
-
-					// make request to the /me API
-					Request.executeMeRequestAsync(session,
-							new Request.GraphUserCallback() {
-
-								// callback after Graph API response with user
-								// object
-								@Override
-								public void onCompleted(GraphUser user,
-										Response response) {
-									if (user != null) {
-										FbDemoActivity.this.user = user;
-										updateUI();
-									}
-								}
-							});
-				}
-			}
-		});
 
 		profilePictureView = (ProfilePictureView) findViewById(R.id.profilePicture);
 		greeting = (TextView) findViewById(R.id.greeting);
@@ -162,6 +140,50 @@ public class FbDemoActivity extends FragmentActivity {
 				}
 			}
 		});
+
+		updateUI();
+
+		// start Facebook Login
+		Session.openActiveSession(this, true, new Session.StatusCallback() {
+
+			@Override
+			public void call(Session session, SessionState state,
+					Exception exception) {
+				// TODO Auto-generated method stub
+				if (session.isOpened()) {
+
+					// make request to the /me API
+					Request.executeMeRequestAsync(session,
+							new Request.GraphUserCallback() {
+
+								// callback after Graph API response with user
+								// object
+								@Override
+								public void onCompleted(GraphUser user,
+										Response response) {
+									if (user != null) {
+										FbDemoActivity.this.user = user;
+										updateUI();
+									}
+								}
+							});
+				}
+			}
+		});
+	}
+
+	@Override
+	protected void onResume() {
+		// TODO Auto-generated method stub
+		super.onResume();
+		uiHelper.onResume();
+	}
+
+	@Override
+	protected void onPause() {
+		// TODO Auto-generated method stub
+		super.onPause();
+		uiHelper.onPause();
 	}
 
 	private void onClickShowFriends() {
@@ -171,11 +193,13 @@ public class FbDemoActivity extends FragmentActivity {
 			params.putString("fields", "name, picture, location");
 
 			// make request to the /me API
+			spinner.show();
 			new Request(session, "me/friends", params, null,
 					new Request.Callback() {
 
 						@Override
 						public void onCompleted(Response response) {
+							spinner.hide();
 							// TODO Auto-generated method stub
 							String string = response.getGraphObject()
 									.getInnerJSONObject().toString();
@@ -197,9 +221,11 @@ public class FbDemoActivity extends FragmentActivity {
 			if (!hasFeedPermission()) {
 				// We need to get new permissions, then complete the action when
 				// we get called back.
-				session.requestNewReadPermissions(new Session.NewPermissionsRequest(
-						this, STREAM_PERMISSIONS));
-				pendingAction = PendingAction.VIEW_PHOTO;
+				pendingAction = PendingAction.VIEW_PHOTOS;
+				NewPermissionsRequest permissionRequest = new Session.NewPermissionsRequest(
+						this, STREAM_PERMISSIONS);
+				permissionRequest.setCallback(callback);
+				session.requestNewReadPermissions(permissionRequest);
 			} else {
 				showPhotos();
 			}
@@ -210,20 +236,29 @@ public class FbDemoActivity extends FragmentActivity {
 		Bundle params = new Bundle();
 		params.putString("filter", "app_2305272732");
 
+		Session session = Session.getActiveSession();
+		
+		spinner.show();
 		// make request to the /me API
 		new Request(session, "me/home", params, null, new Request.Callback() {
 
 			@Override
 			public void onCompleted(Response response) {
-				// TODO Auto-generated method stub
-				String string = response.getGraphObject().getInnerJSONObject()
-						.toString();
+				spinner.hide();
+				if (response.getGraphObject() != null) {
+					// TODO Auto-generated method stub
+					String string = response.getGraphObject()
+							.getInnerJSONObject().toString();
 
-				Intent intent = new Intent(getApplicationContext(),
-						PhotosActivity.class);
-				intent.putExtra("API_RESPONSE", string);
+					Intent intent = new Intent(getApplicationContext(),
+							PhotosActivity.class);
+					intent.putExtra("API_RESPONSE", string);
 
-				startActivity(intent);
+					startActivity(intent);
+				} else {
+					showMessage("Error hitting graph");
+				}
+
 			}
 		}).executeAsync();
 	}
@@ -252,7 +287,7 @@ public class FbDemoActivity extends FragmentActivity {
 		pendingAction = PendingAction.NONE;
 
 		switch (previouslyPendingAction) {
-		case VIEW_PHOTO:
+		case VIEW_PHOTOS:
 			showPhotos();
 			break;
 		case OPEN_GRAPH_POST:
@@ -292,7 +327,10 @@ public class FbDemoActivity extends FragmentActivity {
 							Toast.makeText(FbDemoActivity.this,
 									"Error: " + error.toString(),
 									Toast.LENGTH_LONG).show();
-						} else if (!values.isEmpty())
+						} else if (error instanceof FacebookOperationCanceledException) {
+							Toast.makeText(FbDemoActivity.this, "Cancelled",
+									Toast.LENGTH_LONG).show();
+						} else if (values != null && !values.isEmpty())
 							Toast.makeText(FbDemoActivity.this, "Posted!",
 									Toast.LENGTH_LONG).show();
 						dialog = null;
@@ -343,7 +381,8 @@ public class FbDemoActivity extends FragmentActivity {
 							showMessage("Post to Facebook failed: "
 									+ error.getErrorMessage());
 						} else {
-							String id = (String)response.getGraphObject().getProperty("id");
+							String id = (String) response.getGraphObject()
+									.getProperty("id");
 							showMessage("Success: id (" + id + ")");
 						}
 					}
@@ -376,7 +415,7 @@ public class FbDemoActivity extends FragmentActivity {
 	private boolean hasFeedPermission() {
 		Session session = Session.getActiveSession();
 		return session != null
-				&& session.getPermissions().contains("read_stream");
+				&& session.getPermissions().containsAll(STREAM_PERMISSIONS);
 	}
 
 	@Override
@@ -410,8 +449,20 @@ public class FbDemoActivity extends FragmentActivity {
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
-		Session.getActiveSession().onActivityResult(this, requestCode,
-				resultCode, data);
+		uiHelper.onActivityResult(requestCode, resultCode, data);
 	}
 
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		// TODO Auto-generated method stub
+		super.onSaveInstanceState(outState);
+		uiHelper.onSaveInstanceState(outState);
+	}
+
+	@Override
+	protected void onDestroy() {
+		// TODO Auto-generated method stub
+		super.onDestroy();
+		uiHelper.onDestroy();
+	}
 }
