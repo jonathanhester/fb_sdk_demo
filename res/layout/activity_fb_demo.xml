@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:facebook="http://schemas.android.com/apk/res-auto"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="#FFF"
+    android:orientation="vertical" >
+
+    <LinearLayout
+        android:id="@+id/main_ui_container"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:background="#FFF"
+        android:orientation="vertical" >
+
+        <LinearLayout
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/greeting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginLeft="10dp"
+                android:textColor="#333"
+                android:textSize="18sp" />
+
+            <com.facebook.widget.ProfilePictureView
+                android:id="@+id/profilePicture"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:gravity="center_horizontal"
+                facebook:preset_size="normal" />
+
+            <Button
+                android:id="@+id/showFriendsButton"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:text="Show Friends" />
+
+            <Button
+                android:id="@+id/showPhotosButton"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:text="Show Photos" />
+
+            <Button
+                android:id="@+id/postStatusUpdateButton"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:text="Post Status Update" />
+
+            <Button
+                android:id="@+id/postCustomActionButton"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:text="Post Custom Action" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/fragment_container"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+
+</LinearLayout>

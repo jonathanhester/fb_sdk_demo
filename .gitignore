@@ -1,0 +1,9 @@
+bin
+gen
+*.class
+*R.java
+*.dex
+*.apk
+*.ap_
+.apt*
+proguard
